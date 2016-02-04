@@ -124,6 +124,7 @@ function buildScene() {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
         var vertexPositions = [];
+        var colorVals = [];
 
         for (var x = cx; x < (cx + cl); x++) {
           for (var y = cy; y < (cy + cl); y++) {
@@ -167,6 +168,7 @@ function buildScene() {
                 v[1] += (y - cy);
                 v[2] += (z - cz);
                 vertexPositions.push(v);
+                colorVals.push(new THREE.Color(block.c));
               });
 
             }
@@ -175,6 +177,7 @@ function buildScene() {
 
         // Do vertices caluclations
         var vertices = new Float32Array(vertexPositions.length * 3); // three components per vertex
+        var colors = new Float32Array(colorVals.length * 3);
 
         // components of the position vector for each vertex are stored
         // contiguously in the buffer.
@@ -182,13 +185,19 @@ function buildScene() {
           vertices[i * 3 + 0] = vertexPositions[i][0];
           vertices[i * 3 + 1] = vertexPositions[i][1];
           vertices[i * 3 + 2] = vertexPositions[i][2];
+
+          colors[i * 3 + 0] = colorVals[i].r;
+          colors[i * 3 + 1] = colorVals[i].g;
+          colors[i * 3 + 2] = colorVals[i].b;
         }
 
         // itemSize = 3 because there are 3 values (components) per vertex
         geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
 
         // Add to ThreeJS Scene
-        var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
+        // var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
+        material = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors});
         var cube = new THREE.Mesh(geometry, material);
         scene.add(cube);
 
