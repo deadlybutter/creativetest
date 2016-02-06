@@ -68,7 +68,7 @@ var cubeLeft = [
 ];
 
 var cl = 16;
-var ml = 2 * cl;
+var ml = 8 * cl;
 
 function getChunkCoords(x, y, z) {
   var cx = Math.floor(x / cl) * cl;
@@ -104,7 +104,7 @@ function buildMap() {
             for (var z = cz; z < (cz + cl); z++) {
 
               // Add to world tree
-              var block = {c: Math.random() * 0xffffff, d: 1};
+              var block = {c: Math.random() * 0xffffff, d: Math.random() >= 0.5 ? 1 : 0};
               tree[cx][cy][cz][x][y][z] = block;
             }
           }
@@ -123,70 +123,90 @@ function buildScene() {
   for (var cx = 0; cx < ml; cx += cl) {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
+        var vertexPositions = [];
+        var colorVals = [];
+
         for (var x = cx; x < (cx + cl); x++) {
           for (var y = cy; y < (cy + cl); y++) {
             for (var z = cz; z < (cz + cl); z++) {
 
               var block = tree[cx][cy][cz][x][y][z];
               var geometry = new THREE.BufferGeometry();
-              var vertexPositions = [];
+              var localVertexPositions = [];
 
               if (getVoxelAt(x, y + 1, z).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeTop);
+                localVertexPositions = localVertexPositions.concat(cubeTop);
               }
 
               if (getVoxelAt(x, y - 1, z).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeBottom);
+                localVertexPositions = localVertexPositions.concat(cubeBottom);
               }
 
               if (getVoxelAt(x, y, z + 1).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeFront);
+                localVertexPositions = localVertexPositions.concat(cubeFront);
               }
 
               if (getVoxelAt(x, y, z - 1).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeBack);
+                localVertexPositions = localVertexPositions.concat(cubeBack);
               }
 
               if (getVoxelAt(x + 1, y, z).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeRight);
+                localVertexPositions = localVertexPositions.concat(cubeRight);
               }
 
               if (getVoxelAt(x - 1, y, z).d < block.d) {
-                vertexPositions = vertexPositions.concat(cubeLeft);
+                localVertexPositions = localVertexPositions.concat(cubeLeft);
               }
 
-              if (vertexPositions.length == 0) {
+              if (localVertexPositions.length == 0) {
                 continue;
               }
 
-              // Do vertices caluclations
-              var vertices = new Float32Array(vertexPositions.length * 3); // three components per vertex
-
-              // components of the position vector for each vertex are stored
-              // contiguously in the buffer.
-              for (var i = 0; i < vertexPositions.length; i++) {
-                vertices[i * 3 + 0] = vertexPositions[i][0];
-                vertices[i * 3 + 1] = vertexPositions[i][1];
-                vertices[i * 3 + 2] = vertexPositions[i][2];
-              }
-
-              // itemSize = 3 because there are 3 values (components) per vertex
-              geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-
-              // Add to ThreeJS Scene
-              var material = new THREE.MeshBasicMaterial({color: block.c});
-              var cube = new THREE.Mesh(geometry, material);
-              scene.add(cube);
-
-              // Position and scale it
-              cube.position.x = x;
-              cube.position.y = y;
-              cube.position.z = z;
-              //cube.scale.set(block.d, block.d, block.d);
+              localVertexPositions.forEach(function(v) {
+                v = v.slice();
+                v[0] += (x - cx);
+                v[1] += (y - cy);
+                v[2] += (z - cz);
+                vertexPositions.push(v);
+                colorVals.push(new THREE.Color(block.c));
+              });
 
             }
           }
         }
+
+        // Do vertices caluclations
+        var vertices = new Float32Array(vertexPositions.length * 3); // three components per vertex
+        var colors = new Float32Array(colorVals.length * 3);
+
+        // components of the position vector for each vertex are stored
+        // contiguously in the buffer.
+        for (var i = 0; i < vertexPositions.length; i++) {
+          vertices[i * 3 + 0] = vertexPositions[i][0];
+          vertices[i * 3 + 1] = vertexPositions[i][1];
+          vertices[i * 3 + 2] = vertexPositions[i][2];
+
+          colors[i * 3 + 0] = colorVals[i].r;
+          colors[i * 3 + 1] = colorVals[i].g;
+          colors[i * 3 + 2] = colorVals[i].b;
+        }
+
+        // itemSize = 3 because there are 3 values (components) per vertex
+        geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+        geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        // Add to ThreeJS Scene
+        // var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
+        material = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors});
+        var cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
+
+        // Position and scale it
+        cube.position.x = cx;
+        cube.position.y = cy;
+        cube.position.z = cz;
+        //cube.scale.set(block.d, block.d, block.d);
+
       }
     }
   }
