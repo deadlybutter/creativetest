@@ -8,7 +8,7 @@ var camera;
 var controls;
 var clock;
 
-var cl = 16;
+var cl = 8;
 var ml = 8 * cl;
 
 var queueB = [];

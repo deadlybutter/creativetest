@@ -12,7 +12,7 @@ var ColorList = schemas[2];
 var tree = {};
 var queue = [];
 
-var cl = 16;
+var cl = 8;
 var ml = (process.argv[2] || 4) * cl;
 console.log("Chunk size is " + cl);
 console.log("Map size is " + ml);
@@ -58,6 +58,10 @@ function buildMap() {
 
   console.log("Done building");
   var start = queue.pop();
+  createVertexData(start[0], start[1], start[2]);
+  start = queue.pop();
+  createVertexData(start[0], start[1], start[2]);
+  start = queue.pop();
   createVertexData(start[0], start[1], start[2]);
 }
 
