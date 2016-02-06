@@ -7,9 +7,8 @@ var io = require('socket.io')(server);
 
 // TEMP
 var tools = require(__dirname + '/common/tools.js');
-var secrets = require(__dirname + '/secrets.json');
 var mongoose = require('mongoose');
-mongoose.connect(process.env.MONGO_PATH || secrets.mongo_path);
+mongoose.connect(process.env.MONGO_PATH);
 var Schema = mongoose.Schema;
 var schemas = tools.getMongoSchema(Schema, mongoose);
 var Chunk = schemas[0];
