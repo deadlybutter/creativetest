@@ -108,5 +108,5 @@ this.getMongoSchema = function(Schema, mongoose) {
       collection: 'chunks'
     }
   ));
-  return [Chunk, VerticeList, ColorList];
+  return [Chunk];
 }
