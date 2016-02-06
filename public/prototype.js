@@ -164,7 +164,7 @@ $(document).on('ready', function() {
   stats.domElement.style.top = '0px';
   document.body.appendChild(stats.domElement);
 
-  socket = io.connect('http://localhost:5000');
+  socket = io.connect(location.host);
   socket.on('chunk blocks', recieveBlocks);
 
   scene = new THREE.Scene();
