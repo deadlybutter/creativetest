@@ -57,12 +57,6 @@ function buildMap() {
   }
 
   console.log("Done building");
-  var start = queue.pop();
-  createVertexData(start[0], start[1], start[2]);
-  start = queue.pop();
-  createVertexData(start[0], start[1], start[2]);
-  start = queue.pop();
-  createVertexData(start[0], start[1], start[2]);
 }
 
 function createVertexData(cx, cy, cz) {

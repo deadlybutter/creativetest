@@ -1,6 +1,7 @@
 var tree = {};
 
 var socket;
+var stats;
 
 var scene;
 var renderer;
@@ -9,34 +10,29 @@ var controls;
 var clock;
 
 var cl = 8;
-var ml = 8 * cl;
+var ml = 16 * cl;
 
 var queueB = [];
-var queueR = [];
+
 function getAllChunks() {
   for (var cx = 0; cx < ml; cx += cl) {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
-        var path = createChunkPath(cx, cy, cz);
-        queueR.push({x: cx, y: cy, z: cz});
-        queueB.push({x: cx, y: cy, z: cz});
+        queueB.unshift({x: cx, y: cy, z: cz});
       }
     }
   }
-  socket.emit('get chunk blocks', queueB.pop());
 
-  socket.emit('get render data', queueR.pop());
-  socket.emit('get render data', queueR.pop());
-  socket.emit('get render data', queueR.pop());
-}
-
-function checkQueue(type) {
-  if (type == "b") {
+  for (var i = 0; i < 10; i++) {
     socket.emit('get chunk blocks', queueB.pop());
   }
-  else {
-    socket.emit('get render data', queueR.pop());
+}
+
+function checkQueue() {
+  if (queueB.length == 0) {
+    return;
   }
+  socket.emit('get chunk blocks', queueB.pop());
 }
 
 function recieveBlocks(data) {
@@ -48,50 +44,96 @@ function recieveBlocks(data) {
   var cz = data.pos.z;
   var path = createChunkPath(cx, cy, cz);
   tree[path] = data.blocks;
-  checkQueue('b');
+  updateChunk(data.pos);
+  checkQueue();
 }
 
-function recieveRenderData(data) {
-  if (data.vertices == undefined || data.colors == undefined) {
-    return;
-  }
-  addChunkToScene(data.pos, data.vertices, data.colors);
-  checkQueue('r');
+function updateChunk(pos, faces) {
+  var path = createChunkPath(pos.x, pos.y, pos.z);
+  var renderData = getRenderData(pos, tree[path]);
+  // later -- check if we need to remove it/update it
+  addChunkToScene(pos, renderData.vertices, renderData.colors);
 }
 
-function addChunkToScene(pos, rawVertices, rawColors) {
-  console.log(pos.x);
+function getRenderData(pos, blocks) {
   var cx = pos.x;
   var cy = pos.y;
   var cz = pos.z;
-  var path = createChunkPath(cx, cy, cz);
 
-  var vertices = new Float32Array(rawVertices.length);
-  var colors = new Float32Array(rawColors.length);
+  var vertexPositions = [];
+  var colorVals = [];
+  var chunkPath = createChunkPath(pos.x, pos.y, pos.z);
 
-  for (var i = 0; i < rawVertices.length; i++) {
-    vertices[i] = rawVertices[i];
-    colors[i] = rawColors[i];
+  var localVertexPositions = []
+    .concat(cubeTop)
+    .concat(cubeBottom)
+    .concat(cubeLeft)
+    .concat(cubeRight)
+    .concat(cubeFront)
+    .concat(cubeBack);
+
+  for (var x = cx; x < (cx + cl); x++) {
+    for (var y = cy; y < (cy + cl); y++) {
+      for (var z = cz; z < (cz + cl); z++) {
+
+        try {
+          var block = tree[chunkPath][x][y][z];
+        }
+        catch(e) {
+          continue;
+        }
+
+        if (block.d == 0) {
+          continue;
+        }
+
+        localVertexPositions.forEach(function(v) {
+          v = v.slice();
+          v[0] += (x - cx);
+          v[1] += (y - cy);
+          v[2] += (z - cz);
+          vertexPositions.push(v);
+          colorVals.push(new THREE.Color(Math.random() * 0xffffff));
+        });
+
+      }
+    }
   }
 
-  // rawVertices.forEach(function(e, i) {
-  //   vertices[i] = e;
-  // });
-  //
-  // rawColors.forEach(function(e, i) {
-  //   colors[i] = e;
-  // });
+  // Do vertices caluclations
+  var vertices = new Float32Array(vertexPositions.length * 3); // three components per vertex
+  var colors = new Float32Array(colorVals.length * 3);
 
-  // delete rawColors;
-  // delete rawVertices;
+  // components of the position vector for each vertex are stored
+  // contiguously in the buffer.
+  for (var i = 0; i < vertexPositions.length; i++) {
+    vertices[i * 3 + 0] = vertexPositions[i][0];
+    vertices[i * 3 + 1] = vertexPositions[i][1];
+    vertices[i * 3 + 2] = vertexPositions[i][2];
+
+    colors[i * 3 + 0] = colorVals[i].r;
+    colors[i * 3 + 1] = colorVals[i].g;
+    colors[i * 3 + 2] = colorVals[i].b;
+  }
+
+  return {vertices: vertices, colors: colors};
+}
+
+function addChunkToScene(pos, vertices, colors) {
+  var cx = pos.x;
+  var cy = pos.y;
+  var cz = pos.z;
+  // console.log("Adding " + cx + ', ' + cy + ', ' + cz);
+  // console.log(vertices);
+
   var geometry = new THREE.BufferGeometry();
 
   geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
   geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   // Add to ThreeJS Scene
-  var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
-  //var material = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors});
+  //var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
+  var material = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors});
   var cube = new THREE.Mesh(geometry, material);
   scene.add(cube);
 
@@ -103,20 +145,27 @@ function addChunkToScene(pos, rawVertices, rawColors) {
 
 }
 
-
 function render() {
+  stats.begin();
   requestAnimationFrame(render);
 	renderer.render(scene, camera);
 
   var delta = clock.getDelta();
   controls.update(delta);
+  stats.end();
 }
 
 $(document).on('ready', function() {
 
+  stats = new Stats();
+  stats.setMode(1);
+  stats.domElement.style.position = 'absolute';
+  stats.domElement.style.left = '0px';
+  stats.domElement.style.top = '0px';
+  document.body.appendChild(stats.domElement);
+
   socket = io.connect('http://localhost:5000');
   socket.on('chunk blocks', recieveBlocks);
-  socket.on('render data', recieveRenderData);
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);

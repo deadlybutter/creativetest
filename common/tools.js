@@ -82,6 +82,12 @@ function getVoxelAt(x, y, z, chunk) {
 }
 this.getVoxelAt = getVoxelAt;
 
+function faceTest(x, y, z, tree, compareD) {
+  var testCC = getChunkCoords(x, y, z);
+  var testPath = createChunkPath(testCC[0], testCC[1], testCC[2]);
+  return getVoxelAt(x, y + 1, z, tree[testPath]).d < compareD;
+}
+
 function createChunkPath(cx, cy, cz) {
   var fileName = '' + cx + cy + cz;
   return fileName;
@@ -100,22 +106,6 @@ this.getMongoSchema = function(Schema, mongoose) {
   },
     {
       collection: 'chunks'
-    }
-  ));
-  var VerticeList = mongoose.model('VerticeList', new Schema({
-    vertices: Array,
-    chunkKey: {type: String, index: true}
-  },
-    {
-      collection: 'vertices'
-    }
-  ));
-  var ColorList = mongoose.model('ColorList', new Schema({
-    colors: Array,
-    chunkKey: {type: String, index: true}
-  },
-    {
-      collection: 'colors'
     }
   ));
   return [Chunk, VerticeList, ColorList];
