@@ -36,21 +36,34 @@ function getCalculator() {
 var cl = 8;
 var ml = 16 * cl;
 
+var queueB = [];
+
 function getAllChunks() {
   for (var cx = 0; cx < ml; cx += cl) {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
-        // queueB.unshift({x: cx, y: cy, z: cz});
-        socket.emit('get chunk blocks', {x: cx, y: cy, z: cz});
+        queueB.unshift({x: cx, y: cy, z: cz});
       }
     }
   }
+
+  for (var i = 0; i < 5; i++) {
+    socket.emit('get chunk blocks', queueB.pop());
+  }
+}
+
+function checkQueue() {
+  if (queueB.length == 0) {
+    return;
+  }
+  socket.emit('get chunk blocks', queueB.pop());
 }
 
 function recieveBlocks(data) {
   if (data.blocks == undefined) {
     return;
   }
+  checkQueue();
   var cx = data.pos.x;
   var cy = data.pos.y;
   var cz = data.pos.z;
