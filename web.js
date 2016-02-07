@@ -8,7 +8,6 @@ var io = require('socket.io')(server);
 // TEMP
 var tools = require(__dirname + '/common/tools.js');
 var mongoose = require('mongoose');
-mongoose.connect(process.env.MONGO_PATH);
 var Schema = mongoose.Schema;
 var schemas = tools.getMongoSchema(Schema, mongoose);
 var Chunk = schemas[0];
@@ -27,6 +26,7 @@ io.on('connection', function (socket) {
     var cz = data.z;
     var chunkKey = tools.createChunkPath(cx, cy, cz);
     Chunk.findOne({chunkKey: chunkKey}, function(err, chunkData) {
+      if (err) { console.log(err) }
       if (chunkData == undefined) {
         chunkData = {blocks: undefined};
       }
@@ -35,6 +35,10 @@ io.on('connection', function (socket) {
   });
 });
 
-server.listen(process.env.PORT || 3000, function () {
-  console.log('App listening!');
+mongoose.connect(process.env.MONGO_PATH);
+mongoose.connection.on("open", function(ref) {
+  console.log("Connected to mongo server.");
+  server.listen(process.env.PORT || 3000, function () {
+    console.log('App listening!');
+  });
 });

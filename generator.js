@@ -1,5 +1,7 @@
 var tools = require(__dirname + '/common/tools.js');
 var secrets = require(__dirname + '/secrets.json');
+var noise = require(__dirname + '/perlin.js').noise;
+noise.seed(Math.random());
 
 var mongoose = require('mongoose');
 mongoose.connect(secrets.mongo_path);
@@ -17,8 +19,6 @@ var Schema = mongoose.Schema;
 var schemas = tools.getMongoSchema(Schema, mongoose);
 var Chunk = schemas[0];
 
-var queueB = [];
-
 var cl = 8;
 var ml = (process.argv[2] || 4) * cl;
 console.log("Chunk size is " + cl);
@@ -28,21 +28,45 @@ function makeAllChunks() {
   for (var cx = 0; cx < ml; cx += cl) {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
-        queueB.unshift({x: cx, y: cy, z: cz});
+        makePerlinChunk({x: cx, y: cy, z: cz});
       }
     }
-
-    if (cx == 0) {
-      for (var i = 0; i < 3; i++) {
-        makeChunk(queueB.pop());
-      }
-    }
-
     console.log(cx + ' ... ' + ml);
   }
 }
 
-function makeChunk(pos) {
+function makePerlinChunk(pos) {
+  if (pos == undefined) {
+    return;
+  }
+  var cx = pos.x;
+  var cy = pos.y;
+  var cz = pos.z;
+  var path = tools.createChunkPath(cx, cy, cz);
+  var blocks = {};
+
+  for (var x = cx; x < (cx + cl); x++) {
+    blocks[x] = {};
+    for (var y = cy; y < (cy + cl); y++) {
+      blocks[x][y] = {};
+      for (var z = cz; z < (cz + cl); z++) {
+        var value = Math.abs(Math.ceil(noise.perlin3(x / 100, y / 100, z / 100)));
+        // Add to world tree
+        blocks[x][y][z] = {
+          c: [tools.getRandomInt(50, 200), tools.getRandomInt(50, 200), tools.getRandomInt(50, 200)],
+          d: value
+        };
+      }
+    }
+  }
+  // console.log(blocks);
+  var mongoChunk = new Chunk({chunkKey: path, blocks: blocks});
+  mongoChunk.save(function(err, obj) {
+    if (err) { console.log(err); }
+  });
+}
+
+function makeBlockChunk(pos) {
   if (pos == undefined) {
     return;
   }
@@ -68,12 +92,6 @@ function makeChunk(pos) {
   // console.log(blocks);
   var mongoChunk = new Chunk({chunkKey: path, blocks: blocks});
   mongoChunk.save(function(err, obj) {
-    if (err) {
-      console.log(err);
-    }
-    else {
-      console.log(queueB.length + " chunks left");
-      makeChunk(queueB.pop())
-    }
+    if (err) { console.log(err); }
   });
 }
