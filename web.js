@@ -33,6 +33,16 @@ io.on('connection', function (socket) {
       socket.emit('chunk blocks', {"pos": {x: cx, y: cy, z: cz}, "blocks": chunkData.blocks});
     });
   });
+
+  socket.on('get many chunk blocks', function(data) {
+    if (data == undefined || data == null || !Array.isArray(data)) {
+      return;
+    }
+    console.log('step 1')
+    Chunk.find({chunkKey: {$in: data}}, function(err, chunkData) {
+      socket.emit('batch chunks', chunkData);
+    });
+  });
 });
 
 mongoose.connect(process.env.MONGO_PATH);

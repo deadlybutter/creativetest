@@ -1,7 +1,8 @@
 var cube;
 var tree;
+var cl;
 
-function getRenderData(pos, blocks, cl, THREE) {
+function getRenderData(pos, blocks) {
   var cx = pos.x;
   var cy = pos.y;
   var cz = pos.z;
@@ -17,7 +18,7 @@ function getRenderData(pos, blocks, cl, THREE) {
           block = blocks[x][y][z];
         } catch(e) {}
 
-        if (block.d == 0) {
+        if (block == undefined || block.d == 0) {
           continue;
         }
 
@@ -50,8 +51,18 @@ function getRenderData(pos, blocks, cl, THREE) {
     colors[i * 3 + 1] = colorVals[i].g;
     colors[i * 3 + 2] = colorVals[i].b;
   }
-
   return {pos: pos, vertices: vertices, colors: colors};
+}
+
+function parseLargeChunkBatch(batchData) {
+  batchData.forEach(function(e, i) {
+    var blocks = e.blocks;
+    var cx = Object.keys(blocks)[0];
+    var cy = Object.keys(blocks[cx])[0];
+    var cz = Object.keys(blocks[cx][cy])[0];
+    var renderData = getRenderData({x: cx, y: cy, z: cz}, blocks);
+    postMessage(renderData);
+  });
 }
 
 onmessage = function(e) {
@@ -65,10 +76,14 @@ onmessage = function(e) {
   switch(type) {
       case 'init':
         cube = e.data.cube;
+        cl = e.data.cl;
         break;
       case 'getRenderData':
-        var renderData = getRenderData(e.data.pos, e.data.blocks, e.data.cl);
+        var renderData = getRenderData(e.data.pos, e.data.blocks);
         postMessage(renderData);
+        break;
+      case 'parseLargeChunkBatch':
+        parseLargeChunkBatch(e.data.batch);
         break;
   }
 
