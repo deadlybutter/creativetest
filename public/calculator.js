@@ -1,16 +1,17 @@
-var cube;
+var glCube;
 var tree;
 var cl;
+var bl;
 
-function getRenderData(pos, blocks) {
-  var cx = pos.x;
-  var cy = pos.y;
-  var cz = pos.z;
+function getRenderData(pos, blocks, callback) {
+  var cx = parseInt(pos.x);
+  var cy = parseInt(pos.y);
+  var cz = parseInt(pos.z);
 
   var vertexPositions = [];
   var colorVals = [];
-
   for (var x = cx; x < (cx + cl); x++) {
+    // console.log(x);
     for (var y = cy; y < (cy + cl); y++) {
       for (var z = cz; z < (cz + cl); z++) {
         var block = {d: 0};
@@ -22,7 +23,7 @@ function getRenderData(pos, blocks) {
           continue;
         }
 
-        var localVertexPositions = cube.slice();
+        var localVertexPositions = glCube.slice();
         localVertexPositions.forEach(function(v) {
           v = v.slice();
           v[0] += (x - cx);
@@ -51,17 +52,22 @@ function getRenderData(pos, blocks) {
     colors[i * 3 + 1] = colorVals[i].g;
     colors[i * 3 + 2] = colorVals[i].b;
   }
-  return {pos: pos, vertices: vertices, colors: colors};
+
+  callback({'pos': pos, 'vertices': vertices, 'colors': colors});
 }
 
-function parseLargeChunkBatch(batchData) {
-  batchData.forEach(function(e, i) {
-    var blocks = e.blocks;
-    var cx = Object.keys(blocks)[0];
-    var cy = Object.keys(blocks[cx])[0];
-    var cz = Object.keys(blocks[cx][cy])[0];
-    var renderData = getRenderData({x: cx, y: cy, z: cz}, blocks);
+function parseLargeChunkBatch(batchData, renderData) {
+  if (batchData.length == 0 || batchData == undefined) {
+    return;
+  }
+  var batch = batchData.pop();
+  var blocks = batch.blocks;
+  var cx = Object.keys(blocks)[0];
+  var cy = Object.keys(blocks[cx])[0];
+  var cz = Object.keys(blocks[cx][cy])[0];
+  var renderData = getRenderData({x: cx, y: cy, z: cz}, blocks, function(renderData) {
     postMessage(renderData);
+    parseLargeChunkBatch(batchData);
   });
 }
 
@@ -75,12 +81,14 @@ onmessage = function(e) {
 
   switch(type) {
       case 'init':
-        cube = e.data.cube;
+        glCube = e.data.cube;
         cl = e.data.cl;
+        bl = e.data.bl;
         break;
       case 'getRenderData':
-        var renderData = getRenderData(e.data.pos, e.data.blocks);
-        postMessage(renderData);
+        var renderData = getRenderData(e.data.pos, e.data.blocks, function(renderData) {
+          postMessage(renderData);
+        });
         break;
       case 'parseLargeChunkBatch':
         parseLargeChunkBatch(e.data.batch);

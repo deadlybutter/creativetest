@@ -9,9 +9,14 @@ var camera;
 var controls;
 var clock;
 
+var cl = 8;
+var ml = 16 * cl;
+var bl = 8;
+
 var calculatorPool = [];
 
 function makeCalculators(t) {
+  t++;
   var cube = []
       .concat(cubeTop)
       .concat(cubeBottom)
@@ -23,7 +28,7 @@ function makeCalculators(t) {
     var worker = new Worker('calculator.js');
     calculatorPool.push(worker);
     worker.onmessage = onCalculatorMessage;
-    worker.postMessage({'type': 'init', 'cube': cube, 'cl': cl});
+    worker.postMessage({'type': 'init', 'cube': cube, 'cl': cl, 'bl': bl});
   }
 }
 
@@ -33,9 +38,6 @@ function getCalculator() {
   return worker;
 }
 
-var cl = 8;
-var ml = 16 * cl;
-
 var queueB = [];
 var tempQueue = [];
 
@@ -44,7 +46,7 @@ function getAllChunks() {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
         tempQueue.push(createChunkPath(cx, cy, cz));
-        if(tempQueue.length >= 10) {
+        if(tempQueue.length >= bl) {
           queueB.push(tempQueue);
           tempQueue = [];
         }
@@ -52,7 +54,7 @@ function getAllChunks() {
     }
   }
 
-  for (var i = 0; i < 5; i++) {
+  for (var i = 0; i < 4; i++) {
     socket.emit('get many chunk blocks', queueB.pop());
   }
 }
@@ -79,6 +81,7 @@ function recieveBlocks(data) {
 
 function recieveBatch(data) {
   getCalculator().postMessage({'type': 'parseLargeChunkBatch', 'batch': data});
+  checkQueue();
 }
 
 function updateChunk(pos, faces) {
@@ -87,31 +90,27 @@ function updateChunk(pos, faces) {
 }
 
 function addChunkToScene(pos, vertices, colors) {
-  console.log("uhh")
-  var cx = pos.x;
-  var cy = pos.y;
-  var cz = pos.z;
 
-  var geometry = new THREE.BufferGeometry();
-
-  geometry.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
-  geometry.addAttribute('color', new THREE.BufferAttribute(colors, 3));
+  var g = new THREE.BufferGeometry();
+  g.addAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  g.addAttribute('color', new THREE.BufferAttribute(colors, 3));
 
   // Add to ThreeJS Scene
   var material = new THREE.MeshBasicMaterial({color: Math.random() * 0xffffff});
   //var material = new THREE.MeshBasicMaterial({vertexColors: THREE.VertexColors});
-  var cube = new THREE.Mesh(geometry, material);
+  var cube = new THREE.Mesh(g, material);
+
+  cube.position.x = pos.x;
+  cube.position.y = pos.y;
+  cube.position.z = pos.z;
+
   scene.add(cube);
-
-  // Position and scale it
-  cube.position.x = cx;
-  cube.position.y = cy;
-  cube.position.z = cz;
-  //cube.scale.set(block.d, block.d, block.d);
-
 }
 
+var i = 0;
+var bG;
 function onCalculatorMessage(e) {
+  console.log(e.data.vertices.length);
   addChunkToScene(e.data.pos, e.data.vertices, e.data.colors);
 }
 
@@ -157,7 +156,7 @@ $(document).on('ready', function() {
   controls.autoForward = false;
   controls.dragToLook = false;
 
-  makeCalculators(3);
+  makeCalculators(8);
   getAllChunks();
   render();
 });
