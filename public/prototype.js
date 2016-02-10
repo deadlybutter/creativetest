@@ -42,17 +42,23 @@ var queueB = [];
 var tempQueue = [];
 
 function getAllChunks() {
-  for (var cx = 0; cx < ml; cx += cl) {
-    for (var cy = 0; cy< ml; cy += cl) {
-      for (var cz = 0; cz < ml; cz += cl) {
-        queueB.unshift({x: cx, y: cy, z: cz});
-      }
-    }
-  }
+  var generator = new Worker('clientgenerator.js');
+  generator.onmessage = function(data) {
+    recieveBlocks(data.data);
+  };
+  generator.postMessage({cl: cl, ml: ml, startX: 0, startY: 0, startZ: 0});
 
-  for (var i = 0; i < 5; i++) {
-    socket.emit('get chunk blocks', queueB.pop());
-  }
+  // for (var cx = 0; cx < ml; cx += cl) {
+  //   for (var cy = 0; cy< ml; cy += cl) {
+  //     for (var cz = 0; cz < ml; cz += cl) {
+  //       queueB.unshift({x: cx, y: cy, z: cz});
+  //     }
+  //   }
+  // }
+
+  // for (var i = 0; i < 5; i++) {
+  //   socket.emit('get chunk blocks', queueB.pop());
+  // }
 }
 
 function checkQueue() {
@@ -106,7 +112,6 @@ function addChunkToScene(pos, vertices, colors) {
 var i = 0;
 var bG;
 function onCalculatorMessage(e) {
-  console.log(e.data.vertices.length);
   addChunkToScene(e.data.pos, e.data.vertices, e.data.colors);
 }
 
