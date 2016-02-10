@@ -45,17 +45,13 @@ function getAllChunks() {
   for (var cx = 0; cx < ml; cx += cl) {
     for (var cy = 0; cy< ml; cy += cl) {
       for (var cz = 0; cz < ml; cz += cl) {
-        tempQueue.push(createChunkPath(cx, cy, cz));
-        if(tempQueue.length >= bl) {
-          queueB.push(tempQueue);
-          tempQueue = [];
-        }
+        queueB.unshift({x: cx, y: cy, z: cz});
       }
     }
   }
 
-  for (var i = 0; i < 4; i++) {
-    socket.emit('get many chunk blocks', queueB.pop());
+  for (var i = 0; i < 5; i++) {
+    socket.emit('get chunk blocks', queueB.pop());
   }
 }
 
@@ -63,7 +59,7 @@ function checkQueue() {
   if (queueB.length == 0) {
     return;
   }
-  socket.emit('get many chunk blocks', queueB.pop());
+  socket.emit('get chunk blocks', queueB.pop());
 }
 
 function recieveBlocks(data) {
