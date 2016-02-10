@@ -38,7 +38,6 @@ io.on('connection', function (socket) {
     if (data == undefined || data == null || !Array.isArray(data)) {
       return;
     }
-    console.log('step 1')
     Chunk.find({chunkKey: {$in: data}}, function(err, chunkData) {
       socket.emit('batch chunks', chunkData);
     });
